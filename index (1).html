@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ad Reward System</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #1a1a1a;
+            color: #fff;
+            font-family: 'Arial', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        .container {
+            width: 360px;
+            background: linear-gradient(135deg, #ff8c00, #ff4500);
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+            text-align: center;
+            color: #fff;
+        }
+        h1 {
+            font-size: 26px;
+            margin-bottom: 20px;
+        }
+        input, select {
+            width: calc(100% - 20px);
+            margin: 10px 0;
+            padding: 10px;
+            font-size: 14px;
+            border: none;
+            border-radius: 8px;
+            outline: none;
+            background: rgba(255, 255, 255, 0.2);
+            color: #fff;
+        }
+        button {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            border: none;
+            border-radius: 8px;
+            background-color: #000;
+            color: #fff;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #333;
+        }
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <!-- Sign-Up Page -->
+    <div class="container" id="signup-page">
+        <h1>Sign Up</h1>
+        <input type="text" id="signup-name" placeholder="Enter Your Name" required>
+        <input type="email" id="signup-email" placeholder="Enter Your Email" required>
+        <input type="password" id="signup-password" placeholder="Create a Password" required>
+        <button onclick="submitSignUp()">Sign Up</button>
+        <p>Already have an account? <a href="#" onclick="showLoginPage()">Login</a></p>
+    </div>
+
+    <!-- Login Page -->
+    <div class="container hidden" id="login-page">
+        <h1>Login</h1>
+        <input type="email" id="login-email" placeholder="Enter Your Email" required>
+        <input type="password" id="login-password" placeholder="Enter Your Password" required>
+        <button onclick="submitLogin()">Login</button>
+        <p>Don't have an account? <a href="#" onclick="showSignUpPage()">Sign Up</a></p>
+    </div>
+
+    <!-- Main Reward Page -->
+    <div class="container hidden" id="reward-page">
+        <h1 id="welcome-message">Welcome!</h1>
+        <p>Watched Ads: <span id="watched-ads">0</span></p>
+        <p>Earned Points: <span id="earned-points">0</span></p>
+        <button onclick="watchAd()">Watch Ad</button>
+        <button onclick="startAutoAds()">Start Auto Ads</button>
+        <button onclick="stopAutoAds()" id="stop-auto-btn" disabled>Stop Auto Ads</button>
+        <button onclick="showWithdrawSection()">Request Withdrawal</button>
+
+        <div class="hidden" id="withdraw-section">
+            <h3>Withdraw Points</h3>
+            <input type="number" id="withdraw-amount" placeholder="Enter Points" required>
+            <select id="payment-method">
+                <option value="bkash">Bkash</option>
+                <option value="nagad">Nagad</option>
+                <option value="manual">Manual</option>
+            </select>
+            <input type="text" id="withdraw-phone" placeholder="Enter Phone Number" required>
+            <button onclick="withdrawPoints()">Submit Request</button>
+            <p id="withdraw-status"></p>
+        </div>
+    </div>
+
+    <script>
+        const BOT_TOKEN = "YOUR_BOT_TOKEN";
+        const CHAT_ID = "YOUR_CHAT_ID";
+        let watchedAdsCount = 0;
+        let earnedPoints = 0;
+        let autoAdInterval;
+
+        function showLoginPage() {
+            document.getElementById('signup-page').classList.add('hidden');
+            document.getElementById('login-page').classList.remove('hidden');
+        }
+
+        function showSignUpPage() {
+            document.getElementById('login-page').classList.add('hidden');
+            document.getElementById('signup-page').classList.remove('hidden');
+        }
+
+        function showRewardPage(name) {
+            document.getElementById('signup-page').classList.add('hidden');
+            document.getElementById('login-page').classList.add('hidden');
+            document.getElementById('reward-page').classList.remove('hidden');
+            document.getElementById('welcome-message').textContent = `Welcome, ${name}!`;
+        }
+
+        function saveUser(name, email, password) {
+            const users = JSON.parse(localStorage.getItem('users')) || [];
+            users.push({ name, email, password });
+            localStorage.setItem('users', JSON.stringify(users));
+        }
+
+        function getUser(email, password) {
+            const users = JSON.parse(localStorage.getItem('users')) || [];
+            return users.find(user => user.email === email && user.password === password);
+        }
+
+        async function submitSignUp() {
+            const name = document.getElementById('signup-name').value;
+            const email = document.getElementById('signup-email').value;
+            const password = document.getElementById('signup-password').value;
+
+            if (!name || !email || !password) {
+                alert("All fields are required.");
+                return;
+            }
+
+            if (!email.endsWith("@gmail.com")) {
+                alert("Email must end with @gmail.com.");
+                return;
+            }
+
+            saveUser(name, email, password);
+            showRewardPage(name);
+        }
+
+        function submitLogin() {
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+
+            const user = getUser(email, password);
+
+            if (user) {
+                showRewardPage(user.name);
+            } else {
+                alert("Invalid credentials. Please sign up first.");
+            }
+        }
+
+        function watchAd() {
+            watchedAdsCount++;
+            earnedPoints += 1000;
+            document.getElementById('watched-ads').textContent = watchedAdsCount;
+            document.getElementById('earned-points').textContent = earnedPoints;
+        }
+
+        function startAutoAds() {
+            autoAdInterval = setInterval(watchAd, 5000);
+            document.getElementById('stop-auto-btn').disabled = false;
+        }
+
+        function stopAutoAds() {
+            clearInterval(autoAdInterval);
+            document.getElementById('stop-auto-btn').disabled = true;
+        }
+
+        function showWithdrawSection() {
+            document.getElementById('withdraw-section').classList.remove('hidden');
+        }
+
+        async function withdrawPoints() {
+            const amount = parseInt(document.getElementById('withdraw-amount').value);
+            const method = document.getElementById('payment-method').value;
+            const phone = document.getElementById('withdraw-phone').value;
+
+            if (amount < 500) {
+                alert("Minimum withdraw amount is 500 points.");
+                return;
+            }
+
+            if (earnedPoints < amount) {
+                alert("Insufficient points.");
+                return;
+            }
+
+            earnedPoints -= amount;
+            document.getElementById('earned-points').textContent = earnedPoints;
+
+            alert("Withdrawal request submitted successfully!");
+        }
+    </script>
+</body>
+</html>
